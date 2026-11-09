@@ -1,0 +1,28 @@
+services:
+  bootstrap-server:
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+    image: bootstrap-server:latest
+    container_name: bootstrap-server
+    ports:
+      - "9090:80"
+    volumes:
+      - ./serve:/usr/share/nginx/html:ro
+      - bootstrap-config:/usr/share/nginx/html-config
+    environment:
+      # Set this to the LAN IP or hostname your VMs will use to reach this server.
+      # The dashboard will embed this URL in all generated commands instead of
+      # relying on window.location.origin (which breaks if you browse via localhost).
+      # Example: BOOTSTRAP_PUBLIC_URL=http://192.168.1.50:9090
+      BOOTSTRAP_PUBLIC_URL: ${BOOTSTRAP_PUBLIC_URL:-}
+    restart: unless-stopped
+    labels:
+      - "com.bootstrap-server.description=Ansible bootstrap distribution server"
+
+volumes:
+  bootstrap-config:
+

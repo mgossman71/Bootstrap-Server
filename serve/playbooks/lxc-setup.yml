@@ -1,0 +1,12 @@
+---
+# lxc-setup.yml - LXC host preparation
+- name: Ubuntu 24.04 LXC Host Setup
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - common
+    - network
+    - security
+    - lxc-host

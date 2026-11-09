@@ -1,0 +1,37 @@
+---
+# roles/network/tasks/main.yml - uses ONLY ansible-core builtins
+# Tags: network
+
+- name: Set hostname
+  ansible.builtin.command:
+    cmd: "hostnamectl set-hostname {{ inventory_hostname }}"
+  changed_when: true
+  when: inventory_hostname != "localhost"
+  tags: [network]
+
+- name: Ensure /etc/hosts has localhost entry
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s'
+    line: "127.0.0.1\tlocalhost"
+    state: present
+  ignore_errors: true
+  tags: [network]
+
+- name: Install network tools
+  ansible.builtin.apt:
+    name:
+      - netplan.io
+      - bridge-utils
+    state: present
+  tags: [network]
+
+- name: Write sysctl config for IP forwarding
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-bootstrap.conf
+    content: |
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+    mode: '0644'
+  notify: Reload sysctl
+  tags: [network]

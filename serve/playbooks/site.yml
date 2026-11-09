@@ -1,0 +1,12 @@
+---
+# site.yml - Top-level playbook that applies all roles
+- name: Full System Setup
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - common
+    - network
+    - security
+    - docker

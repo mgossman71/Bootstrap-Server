@@ -1,0 +1,92 @@
+---
+# roles/common/tasks/main.yml - uses ONLY ansible-core builtins
+# Tags: common
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: [common, minimal]
+
+- name: Upgrade all packages to latest
+  ansible.builtin.apt:
+    upgrade: dist
+  tags: [common]
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+  tags: [common, minimal]
+
+- name: Remove bloat packages
+  ansible.builtin.apt:
+    name: "{{ remove_packages }}"
+    state: absent
+  tags: [common]
+
+- name: Check if systemd is running
+  ansible.builtin.stat:
+    path: /run/systemd/system
+  register: systemd_running
+  tags: [common]
+
+- name: Set timezone (systemd)
+  ansible.builtin.command:
+    cmd: "timedatectl set-timezone {{ timezone }}"
+  changed_when: true
+  when: systemd_running.stat.exists
+  tags: [common]
+
+- name: Set timezone (fallback - no systemd)
+  ansible.builtin.copy:
+    dest: /etc/timezone
+    content: "{{ timezone }}\n"
+    mode: '0644'
+  when: not systemd_running.stat.exists
+  tags: [common]
+
+- name: Link localtime
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ timezone }}"
+    dest: /etc/localtime
+    state: link
+    force: yes
+  tags: [common]
+
+- name: Set locale
+  ansible.builtin.command:
+    cmd: "locale-gen {{ locale }}"
+  changed_when: true
+  ignore_errors: true
+  tags: [common]
+
+- name: Update default locale
+  ansible.builtin.command:
+    cmd: "update-locale LANG={{ locale }}"
+  changed_when: true
+  ignore_errors: true
+  tags: [common]
+
+- name: Configure unattended-upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Download-Upgradeable-Packages "1";
+      APT::Periodic::AutocleanInterval "7";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: '0644'
+  when: auto_upgrade_enabled | default(true)
+  tags: [common]
+
+- name: Enable unattended-upgrades service
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    enabled: yes
+    state: started
+  when:
+    - auto_upgrade_enabled | default(true)
+    - systemd_running.stat.exists
+  tags: [common]
+

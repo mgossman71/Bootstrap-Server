@@ -1,0 +1,41 @@
+---
+# roles/common/defaults/main.yml
+# Override these variables to customize behavior
+
+# Timezone
+timezone: "America/Chicago"
+
+# Locale
+locale: "en_US.UTF-8"
+
+# Base packages to install
+base_packages:
+  - htop
+  - vim
+  - nano
+  - net-tools
+  - curl
+  - wget
+  - git
+  - rsync
+  - tmux
+  - jq
+  - unzip
+  - gzip
+  - tar
+  - openssh-server
+  - ca-certificates
+  - gnupg
+  - software-properties-common
+  - apt-transport-https
+  - unattended-upgrades
+  - needrestart
+  - locales
+
+# Packages to remove (bloat/cleanup)
+remove_packages:
+  - snapd
+
+# Auto-upgrade configuration
+auto_upgrade_enabled: true
+auto_upgrade_mail: ""

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bootstrap Server</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="warning-banner" id="warning-banner" style="display:none;">
+            <span class="warning-icon">⚠️</span>
+            <span id="warning-text"></span>
+        </div>
+
+        <header>
+            <h1>⚡ Bootstrap Server</h1>
+            <span class="badge" id="version-badge">loading...</span>
+        </header>
+
+        <main>
+            <section class="hero">
+                <h2>Set up your Ubuntu 24.04 server in one command</h2>
+                <p>Paste this into a fresh VM or LXC terminal:</p>
+                <div class="command-block primary">
+                    <pre><code id="main-command"></code></pre>
+                    <button class="copy-btn" onclick="copyCommand('main-command')">📋 Copy</button>
+                </div>
+            </section>
+
+            <section class="role-selector">
+                <h3>Quick Select</h3>
+                <div class="role-grid">
+                    <button class="role-btn active" data-role="vm" onclick="selectRole('vm')">
+                        <span class="role-icon">🖥️</span>
+                        <span class="role-name">VM Full Setup</span>
+                        <span class="role-desc">Updates, security, network, docker</span>
+                    </button>
+                    <button class="role-btn" data-role="lxc-host" onclick="selectRole('lxc-host')">
+                        <span class="role-icon">📦</span>
+                        <span class="role-name">LXC Host</span>
+                        <span class="role-desc">Bridge net, cgroups, LXC tooling</span>
+                    </button>
+                    <button class="role-btn" data-role="lxc-container" onclick="selectRole('lxc-container')">
+                        <span class="role-icon">🐳</span>
+                        <span class="role-name">LXC Container</span>
+                        <span class="role-desc">Minimal container setup</span>
+                    </button>
+                    <button class="role-btn" data-role="security" onclick="selectRole('security')">
+                        <span class="role-icon">🔒</span>
+                        <span class="role-name">Security Only</span>
+                        <span class="role-desc">SSH hardening, fail2ban (firewall off)</span>
+                    </button>
+                    <button class="role-btn" data-role="docker" onclick="selectRole('docker')">
+                        <span class="role-icon">🐋</span>
+                        <span class="role-name">Docker Only</span>
+                        <span class="role-desc">Install Docker CE + compose</span>
+                    </button>
+                    <button class="role-btn" data-role="minimal" onclick="selectRole('minimal')">
+                        <span class="role-icon">📋</span>
+                        <span class="role-name">Minimal</span>
+                        <span class="role-desc">Base packages, updates only</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="step-by-step">
+                <h3>Advanced: Step-by-Step</h3>
+                <p>If you want to do it manually:</p>
+                <div class="command-block">
+                    <pre><code id="step0-cmd"># 0. Test connectivity from the new VM (must succeed first)
+curl -v http://SERVER_PLACEHOLDER:9090/</code></pre>
+                    <button class="copy-btn" onclick="copyCommand('step0-cmd')">📋 Copy</button>
+                </div>
+                <div class="command-block">
+                    <pre><code id="step1-cmd"># 1. Install prerequisites
+sudo apt update && sudo apt install -y curl git python3-pip</code></pre>
+                    <button class="copy-btn" onclick="copyCommand('step1-cmd')">📋 Copy</button>
+                </div>
+                <div class="command-block">
+                    <pre><code id="step2-cmd"></code></pre>
+                    <button class="copy-btn" onclick="copyCommand('step2-cmd')">📋 Copy</button>
+                </div>
+                <div class="command-block">
+                    <pre><code id="step3-cmd"># 3. Run the bootstrap script
+sudo bash /tmp/bootstrap.sh --server http://SERVER_PLACEHOLDER:9090 --role vm</code></pre>
+                    <button class="copy-btn" onclick="copyCommand('step3-cmd')">📋 Copy</button>
+                </div>
+            </section>
+
+            <section class="available-files">
+                <h3>Available Files</h3>
+                <div class="file-grid">
+                    <div class="file-group">
+                        <h4>Playbooks</h4>
+                        <ul id="playbook-list"><li>Loading...</li></ul>
+                    </div>
+                    <div class="file-group">
+                        <h4>Direct Downloads</h4>
+                        <ul>
+                            <li><a href="/bootstrap.sh">bootstrap.sh</a></li>
+                            <li><a href="/ansible.cfg">ansible.cfg</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span id="footer-info">Loading build info...</span>
+        </footer>
+    </div>
+    <script src="/assets/app.js"></script>
+</body>
+</html>

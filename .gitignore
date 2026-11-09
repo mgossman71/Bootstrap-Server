@@ -1,0 +1,17 @@
+# Build artifacts
+serve/build-info.json
+
+# Environment (contains LAN IP)
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+
+# Docker
+*.tar

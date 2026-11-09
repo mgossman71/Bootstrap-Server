@@ -1,0 +1,12 @@
+---
+# vm-setup.yml - Full VM setup playbook
+- name: Ubuntu 24.04 VM Full Setup
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - common
+    - network
+    - security
+    - docker

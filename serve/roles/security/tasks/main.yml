@@ -1,0 +1,201 @@
+---
+# roles/security/tasks/main.yml - uses ONLY ansible-core builtins
+# Tags: security
+
+- name: Check if systemd is running
+  ansible.builtin.stat:
+    path: /run/systemd/system
+  register: systemd_running
+  tags: [security]
+
+- name: Install security packages
+  ansible.builtin.apt:
+    name:
+      - openssh-server
+      - fail2ban
+    state: present
+  tags: [security]
+
+- name: Generate host keys if missing
+  ansible.builtin.command:
+    cmd: ssh-keygen -A
+  register: ssh_keygen
+  changed_when: ssh_keygen.stdout | length > 0
+  tags: [security]
+
+# Earlier versions of this role replaced sshd_config wholesale, dropping the
+# sftp Subsystem, UsePAM and the sshd_config.d Include. Put the stock file back.
+- name: Check for sshd_config written by an earlier bootstrap run
+  ansible.builtin.command:
+    cmd: grep -q "Managed by Ansible - Bootstrap Server" /etc/ssh/sshd_config
+  register: sshd_config_legacy
+  changed_when: false
+  failed_when: false
+  tags: [security]
+
+- name: Restore stock sshd_config
+  ansible.builtin.copy:
+    src: /usr/share/openssh/sshd_config
+    dest: /etc/ssh/sshd_config
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: sshd_config_legacy.rc == 0
+  notify: Restart ssh
+  tags: [security]
+
+# sshd -t refuses to run without its privilege separation dir, which only
+# exists once ssh.service has started.
+- name: Ensure sshd privilege separation directory exists
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [security]
+
+# 00- so it is read before cloud-init's 50-cloud-init.conf (first value wins).
+- name: Configure SSH hardening drop-in
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/00-bootstrap.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: /usr/sbin/sshd -t -f %s
+    content: |
+      # Managed by Ansible - Bootstrap Server (drop-in)
+      HostKey /etc/ssh/ssh_host_ed25519_key
+      HostKey /etc/ssh/ssh_host_rsa_key
+
+      PermitRootLogin {{ ssh_permit_root_login }}
+      PubkeyAuthentication {{ ssh_pubkey_auth }}
+      PasswordAuthentication {{ ssh_password_auth }}
+      PermitEmptyPasswords no
+      KbdInteractiveAuthentication no
+
+      KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org
+      Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+      MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+
+      ClientAliveInterval {{ ssh_client_alive_interval }}
+      ClientAliveCountMax {{ ssh_client_alive_count_max }}
+      MaxAuthTries {{ ssh_max_auth_tries }}
+      MaxSessions {{ ssh_max_sessions }}
+      LoginGraceTime {{ ssh_login_grace_time }}
+
+      LogLevel VERBOSE
+
+      X11Forwarding no
+      AllowTcpForwarding no
+      AllowAgentForwarding no
+      GatewayPorts no
+      PermitTunnel no
+  notify: Restart ssh
+  tags: [security]
+
+# Ubuntu 24.04 socket-activates sshd via ssh.socket; the unit is ssh, not sshd.
+- name: Check for ssh.socket
+  ansible.builtin.command:
+    cmd: systemctl list-unit-files ssh.socket
+  register: ssh_socket_unit
+  changed_when: false
+  failed_when: false
+  when: systemd_running.stat.exists
+  tags: [security]
+
+- name: Ensure ssh is running (systemd)
+  ansible.builtin.systemd:
+    name: "{{ 'ssh.socket' if 'ssh.socket' in ssh_socket_unit.stdout else 'ssh' }}"
+    enabled: yes
+    state: started
+  when: systemd_running.stat.exists
+  tags: [security]
+
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: ufw_enable | bool
+  tags: [security]
+
+- name: Set UFW default deny incoming
+  ansible.builtin.command:
+    cmd: ufw default deny incoming
+  changed_when: true
+  when: ufw_enable | bool
+  tags: [security]
+
+- name: Set UFW default allow outgoing
+  ansible.builtin.command:
+    cmd: ufw default allow outgoing
+  changed_when: true
+  when: ufw_enable | bool
+  tags: [security]
+
+- name: Allow SSH through UFW
+  ansible.builtin.command:
+    cmd: ufw allow OpenSSH
+  changed_when: true
+  when: ufw_enable | bool
+  tags: [security]
+
+- name: Enable UFW
+  ansible.builtin.command:
+    cmd: ufw --force enable
+  changed_when: true
+  when: ufw_enable | bool
+  tags: [security]
+
+- name: Check for UFW
+  ansible.builtin.stat:
+    path: /usr/sbin/ufw
+  register: ufw_binary
+  when: not (ufw_enable | bool)
+  tags: [security]
+
+- name: Get UFW status
+  ansible.builtin.command:
+    cmd: ufw status
+  register: ufw_status
+  changed_when: false
+  failed_when: false
+  when:
+    - not (ufw_enable | bool)
+    - ufw_binary.stat.exists
+  tags: [security]
+
+- name: Disable UFW
+  ansible.builtin.command:
+    cmd: ufw --force disable
+  changed_when: true
+  when:
+    - not (ufw_enable | bool)
+    - ufw_binary.stat.exists
+    - "'Status: active' in ufw_status.stdout"
+  tags: [security]
+
+- name: Configure fail2ban sshd jail
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.d/sshd.local
+    content: |
+      [sshd]
+      enabled = true
+      port = ssh
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+      maxretry = 5
+      findtime = 600
+      bantime = 3600
+    mode: '0644'
+  notify: Restart fail2ban
+  tags: [security]
+
+- name: Enable fail2ban (systemd)
+  ansible.builtin.systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+  when: systemd_running.stat.exists
+  tags: [security]

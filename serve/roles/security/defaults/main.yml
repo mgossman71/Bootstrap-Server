@@ -1,0 +1,25 @@
+---
+# roles/security/defaults/main.yml
+# Override these to tune SSH hardening / firewall.
+
+# SSH: who may log in and how.
+# PermitRootLogin values:
+#   no                 -> never allow root via SSH
+#   prohibit-password  -> root via SSH keys only (recommended)
+#   yes                -> root via SSH keys AND password (least secure)
+#   forced-commands-only -> only with a forced command (e.g. backups)
+ssh_permit_root_login: "prohibit-password"
+
+ssh_password_auth: "no"
+ssh_pubkey_auth: "yes"
+ssh_max_auth_tries: 3
+ssh_max_sessions: 10
+ssh_login_grace_time: 30
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+
+# Firewall / fail2ban
+# ufw_enable: false leaves new systems with no host firewall, and turns UFW
+# off if it is already active. Set true to deny incoming except SSH.
+ufw_enable: false
+fail2ban_enable: true

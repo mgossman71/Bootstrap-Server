@@ -1,0 +1,13 @@
+---
+# roles/security/handlers/main.yml
+- name: Restart ssh
+  ansible.builtin.command:
+    cmd: systemctl try-reload-or-restart ssh
+  when: systemd_running.stat.exists
+  changed_when: true
+
+- name: Restart fail2ban
+  ansible.builtin.command:
+    cmd: systemctl restart fail2ban
+  when: systemd_running.stat.exists
+  changed_when: true

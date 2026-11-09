@@ -1,0 +1,8 @@
+{
+  "playbooks": [
+    "site.yml",
+    "vm-setup.yml",
+    "lxc-setup.yml",
+    "security-only.yml"
+  ]
+}

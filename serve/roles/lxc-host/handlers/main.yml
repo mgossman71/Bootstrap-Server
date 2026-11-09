@@ -1,0 +1,13 @@
+---
+# roles/lxc-host/handlers/main.yml
+- name: Update grub
+  ansible.builtin.command:
+    cmd: update-grub
+  changed_when: true
+  ignore_errors: true
+
+- name: Restart lxc-net
+  ansible.builtin.command:
+    cmd: systemctl restart lxc-net
+  when: systemd_running.stat.exists | default(false)
+  changed_when: true

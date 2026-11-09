@@ -1,0 +1,9 @@
+---
+# security-only.yml - Security hardening only
+- name: Security Hardening
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - security
