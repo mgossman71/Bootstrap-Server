@@ -56,6 +56,36 @@
     mode: '0755'
   tags: [security]
 
+# Lockout guard: turning off password auth on a box where nobody has an SSH
+# key leaves only the console. Look for keys on root and regular users.
+- name: Find accounts with authorized SSH keys
+  ansible.builtin.shell:
+    cmd: |
+      getent passwd | awk -F: '$3 == 0 || ($3 >= 1000 && $3 < 65534) {print $1 ":" $6}' |
+      while IFS=: read -r user home; do
+        if [ -s "$home/.ssh/authorized_keys" ]; then echo "$user"; fi
+      done
+  register: ssh_key_users
+  changed_when: false
+  failed_when: false
+  tags: [security]
+
+- name: Decide effective PasswordAuthentication
+  ansible.builtin.set_fact:
+    ssh_password_auth_effective: >-
+      {{ 'yes' if (ssh_password_auth | string | lower in ['no', 'false'] and ssh_key_users.stdout | trim == '')
+         else ssh_password_auth }}
+  tags: [security]
+
+- name: Warn that password auth was left on
+  ansible.builtin.debug:
+    msg: >-
+      No account has ~/.ssh/authorized_keys, so PasswordAuthentication stays
+      'yes' to avoid locking you out. Add a key (ssh-copy-id) and re-run to
+      disable passwords.
+  when: ssh_password_auth_effective != ssh_password_auth
+  tags: [security]
+
 # 00- so it is read before cloud-init's 50-cloud-init.conf (first value wins).
 - name: Configure SSH hardening drop-in
   ansible.builtin.copy:
@@ -71,7 +101,7 @@
 
       PermitRootLogin {{ ssh_permit_root_login }}
       PubkeyAuthentication {{ ssh_pubkey_auth }}
-      PasswordAuthentication {{ ssh_password_auth }}
+      PasswordAuthentication {{ ssh_password_auth_effective }}
       PermitEmptyPasswords no
       KbdInteractiveAuthentication no
 

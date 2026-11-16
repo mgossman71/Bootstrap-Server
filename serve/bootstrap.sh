@@ -89,7 +89,7 @@ case "$ROLE" in
             "Unattended upgrades"
             "Timezone + locale"
             "Network hardening (sysctl + IP forwarding)"
-            "SSH hardening (no root, no password auth, max tries)"
+            "SSH hardening (root keys only; passwords off once an SSH key exists)"
             "Firewall disabled (UFW off)"
             "Fail2ban"
             "Docker CE + compose"
@@ -100,7 +100,7 @@ case "$ROLE" in
             "Unattended upgrades"
             "Timezone + locale"
             "Network hardening (sysctl + IP forwarding)"
-            "SSH hardening (no root, no password auth, max tries)"
+            "SSH hardening (root keys only; passwords off once an SSH key exists)"
             "Firewall disabled (UFW off)"
             "Fail2ban"
             "LXC host tooling + bridge networking"
@@ -111,7 +111,7 @@ case "$ROLE" in
         ) ;;
     security)
         COMPONENTS=(
-            "SSH hardening (no root, no password auth, max tries)"
+            "SSH hardening (root keys only; passwords off once an SSH key exists)"
             "Firewall disabled (UFW off)"
             "Fail2ban"
         ) ;;
