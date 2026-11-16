@@ -45,7 +45,7 @@ The `docker-compose.yml` bind-mounts `./serve` into the container. Edit files in
 | `vm` | Full VM setup (updates, security, network, docker) |
 | `lxc-host` | LXC host prep (bridge networking, cgroups, tooling) |
 | `lxc-container` | Minimal container setup |
-| `security` | Security hardening only (SSH, fail2ban; firewall left off) |
+| `security` | SSH config (root + password login on), fail2ban; firewall left off |
 | `docker` | Docker CE install only |
 | `minimal` | Base packages only |
 
@@ -53,7 +53,8 @@ The `docker-compose.yml` bind-mounts `./serve` into the container. Edit files in
 
 - **Server IP for commands**: Set `BOOTSTRAP_PUBLIC_URL` in `.env` (critical — see above)
 - **Packages/timezone/etc.**: Edit `serve/roles/common/defaults/main.yml`
-- **Firewall**: Off by default. Set `ufw_enable: true` in `serve/roles/security/defaults/main.yml` to deny incoming except SSH
+- **Firewall**: Off by default. Set `ufw_enable: true` in `serve/roles/security/defaults/main.yml` to deny incoming except SSH (every port sshd listens on is allowed before the deny is set)
+- **fail2ban**: On by default (5 failed SSH logins in 10 min → 1 hour ban). Localhost and private LAN ranges are never banned; change `fail2ban_ignoreip` in `serve/roles/security/defaults/main.yml`
 - **SSH rules**: Root login and password login are on by default (`ssh_permit_root_login`, `ssh_password_auth`). Edit `serve/roles/security/defaults/main.yml` and the drop-in task in `serve/roles/security/tasks/main.yml` (written to `/etc/ssh/sshd_config.d/00-bootstrap.conf`)
 - **All playbooks are idempotent** — safe to run multiple times
 
