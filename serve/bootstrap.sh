@@ -193,7 +193,44 @@ fi
 if [[ "${SKIP_INSTALL}" != "true" ]]; then
     log "Step 1/4: Installing prerequisites (1-3 minutes; apt output may pause)..."
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update
+    # A single broken third-party repo makes apt-get update exit non-zero, and the
+    # playbook's update_cache tasks would fail on it too. Third-party source files
+    # in sources.list.d that fail are moved aside (not deleted) and update retried.
+    APT_UPDATE_LOG="$(mktemp)"
+    APT_DISABLED_DIR="/etc/apt/sources.list.d.bootstrap-disabled"
+
+    # Print the source files that define each failing URL in the last update log.
+    broken_apt_sources() {
+        grep -E '^(E|Err|W):' "$APT_UPDATE_LOG" | grep -oE 'https?://[^ ]+' | sort -u \
+            | while read -r bad_url; do
+            bad_path="${bad_url#*://}"; bad_path="${bad_path#*/}"; bad_path="${bad_path%/InRelease}"
+            grep -rlF "$bad_path" /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null || true
+        done | sort -u
+    }
+
+    if ! apt-get update 2>&1 | tee "$APT_UPDATE_LOG"; then
+        BROKEN_SOURCES="$(broken_apt_sources | grep '^/etc/apt/sources.list.d/' || true)"
+        if [[ -n "$BROKEN_SOURCES" ]]; then
+            mkdir -p "$APT_DISABLED_DIR"
+            while read -r src; do
+                warn "Disabling broken apt source: $src -> $APT_DISABLED_DIR/"
+                mv -f "$src" "$APT_DISABLED_DIR/"
+            done <<< "$BROKEN_SOURCES"
+            log "Retrying apt-get update..."
+        fi
+        if [[ -z "$BROKEN_SOURCES" ]] || ! apt-get update 2>&1 | tee "$APT_UPDATE_LOG"; then
+            err "apt-get update failed - one or more apt sources on this machine are broken."
+            echo ""
+            grep -E '^(E|Err):' "$APT_UPDATE_LOG" | sed 's/^/    /' || true
+            broken_apt_sources | sed 's/^/      defined in: /' || true
+            echo ""
+            echo "  Fix or remove those source files (e.g. mv <file> /root/), then re-run."
+            rm -f "$APT_UPDATE_LOG"
+            exit 1
+        fi
+        ok "apt-get update succeeded after disabling broken sources (restore from $APT_DISABLED_DIR once fixed)"
+    fi
+    rm -f "$APT_UPDATE_LOG"
     apt-get install -y \
         curl wget git \
         python3 python3-pip python3-venv python3-dev \
