@@ -10,8 +10,9 @@
 #   forced-commands-only -> only with a forced command (e.g. backups)
 ssh_permit_root_login: "prohibit-password"
 
-# "no" is only applied when some account has ~/.ssh/authorized_keys;
-# otherwise passwords stay on so a fresh server is not locked out.
+# "no" is only applied when every regular login user has
+# ~/.ssh/authorized_keys (or, with no regular users, root does);
+# otherwise passwords stay on so nobody is locked out.
 ssh_password_auth: "no"
 ssh_pubkey_auth: "yes"
 ssh_max_auth_tries: 3

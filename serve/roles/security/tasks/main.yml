@@ -56,16 +56,27 @@
     mode: '0755'
   tags: [security]
 
-# Lockout guard: turning off password auth on a box where nobody has an SSH
-# key leaves only the console. Look for keys on root and regular users.
-- name: Find accounts with authorized SSH keys
+# Lockout guard: turning off password auth locks out every user without an
+# SSH key. A key on root does not help other users, so passwords only go off
+# when every regular login user has a key (or, with none, root has one).
+- name: Find login users without authorized SSH keys
   ansible.builtin.shell:
     cmd: |
-      getent passwd | awk -F: '$3 == 0 || ($3 >= 1000 && $3 < 65534) {print $1 ":" $6}' |
+      getent passwd | awk -F: '$3 >= 1000 && $3 < 65534 && $7 !~ /(nologin|false)$/ {print $1 ":" $6}' |
       while IFS=: read -r user home; do
-        if [ -s "$home/.ssh/authorized_keys" ]; then echo "$user"; fi
+        if [ ! -s "$home/.ssh/authorized_keys" ]; then echo "$user"; fi
       done
-  register: ssh_key_users
+  register: ssh_keyless_users
+  changed_when: false
+  failed_when: false
+  tags: [security]
+
+- name: Count login users and check root for a key
+  ansible.builtin.shell:
+    cmd: |
+      getent passwd | awk -F: '$3 >= 1000 && $3 < 65534 && $7 !~ /(nologin|false)$/' | wc -l
+      [ -s /root/.ssh/authorized_keys ] && echo root-key || echo root-nokey
+  register: ssh_key_summary
   changed_when: false
   failed_when: false
   tags: [security]
@@ -73,16 +84,18 @@
 - name: Decide effective PasswordAuthentication
   ansible.builtin.set_fact:
     ssh_password_auth_effective: >-
-      {{ 'yes' if (ssh_password_auth | string | lower in ['no', 'false'] and ssh_key_users.stdout | trim == '')
+      {{ 'yes' if (ssh_password_auth | string | lower in ['no', 'false'] and
+                   (ssh_keyless_users.stdout | trim != '' or
+                    (ssh_key_summary.stdout_lines[0] | int == 0 and 'root-nokey' in ssh_key_summary.stdout)))
          else ssh_password_auth }}
   tags: [security]
 
 - name: Warn that password auth was left on
   ansible.builtin.debug:
     msg: >-
-      No account has ~/.ssh/authorized_keys, so PasswordAuthentication stays
-      'yes' to avoid locking you out. Add a key (ssh-copy-id) and re-run to
-      disable passwords.
+      PasswordAuthentication stays 'yes' to avoid a lockout. Users without
+      ~/.ssh/authorized_keys: {{ ssh_keyless_users.stdout_lines | join(', ') or 'none (and root has no key)' }}.
+      Add their keys (ssh-copy-id) and re-run to disable passwords.
   when: ssh_password_auth_effective != ssh_password_auth
   tags: [security]
 
