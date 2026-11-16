@@ -54,7 +54,7 @@ The `docker-compose.yml` bind-mounts `./serve` into the container. Edit files in
 - **Server IP for commands**: Set `BOOTSTRAP_PUBLIC_URL` in `.env` (critical — see above)
 - **Packages/timezone/etc.**: Edit `serve/roles/common/defaults/main.yml`
 - **Firewall**: Off by default. Set `ufw_enable: true` in `serve/roles/security/defaults/main.yml` to deny incoming except SSH
-- **SSH rules**: Edit `serve/roles/security/defaults/main.yml` (values) or the drop-in task in `serve/roles/security/tasks/main.yml` (written to `/etc/ssh/sshd_config.d/00-bootstrap.conf`)
+- **SSH rules**: Root login and password login are on by default (`ssh_permit_root_login`, `ssh_password_auth`). Edit `serve/roles/security/defaults/main.yml` and the drop-in task in `serve/roles/security/tasks/main.yml` (written to `/etc/ssh/sshd_config.d/00-bootstrap.conf`)
 - **All playbooks are idempotent** — safe to run multiple times
 
 ## Project Structure

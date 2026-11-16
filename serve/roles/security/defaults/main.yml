@@ -2,27 +2,24 @@
 # roles/security/defaults/main.yml
 # Override these to tune SSH hardening / firewall.
 
-# SSH: who may log in and how.
-# PermitRootLogin values:
-#   no                 -> never allow root via SSH
-#   prohibit-password  -> root via SSH keys only (recommended)
-#   yes                -> root via SSH keys AND password (least secure)
-#   forced-commands-only -> only with a forced command (e.g. backups)
-ssh_permit_root_login: "prohibit-password"
+# SSH: who may log in and how. Written to /etc/ssh/sshd_config.d/00-bootstrap.conf,
+# which is read first, so these win over 50-cloud-init.conf and sshd_config.
+# PermitRootLogin: yes (password or key) | prohibit-password (key only) | no
+ssh_permit_root_login: "yes"
+ssh_password_auth: "yes"
+# Keyboard-interactive (PAM) prompts, used by some clients for password login.
+ssh_kbd_interactive_auth: "yes"
 
-# "no" is only applied when every regular login user has
-# ~/.ssh/authorized_keys (or, with no regular users, root does);
-# otherwise passwords stay on so nobody is locked out.
-ssh_password_auth: "no"
-ssh_pubkey_auth: "yes"
-ssh_max_auth_tries: 3
 ssh_max_sessions: 10
-ssh_login_grace_time: 30
 ssh_client_alive_interval: 300
 ssh_client_alive_count_max: 2
 
 # Firewall / fail2ban
 # ufw_enable: false leaves new systems with no host firewall, and turns UFW
-# off if it is already active. Set true to deny incoming except SSH.
+# off if it is already active. Set true to deny incoming except SSH (every
+# port sshd listens on is allowed before the deny takes effect).
 ufw_enable: false
 fail2ban_enable: true
+# Addresses fail2ban never bans, so mistyped passwords from the LAN cannot
+# lock you out. Space-separated, as fail2ban expects.
+fail2ban_ignoreip: "127.0.0.1/8 ::1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 fc00::/7"
